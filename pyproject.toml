@@ -1,0 +1,23 @@
+[project]
+name = "nb"
+version = "0.1.0"
+description = "Command line tool to quickly run Python notebooks"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]
+
+[project.scripts]
+nb = "main:main"
+
+[tool.mypy]
+plugins = "numpy.typing.mypy_plugin"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning"
+]
