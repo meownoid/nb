@@ -13,7 +13,6 @@ from typing import Any, Dict
 
 import tomllib
 
-# Constants for regex patterns
 START_MARKER_RE = re.compile(r"^#\s*nb\.start(.*?)$")
 END_MARKER_RE = re.compile(r"^#\s*nb\.end\s*$")
 

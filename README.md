@@ -51,7 +51,7 @@ Only one `nb.start` - `nb.end` section is allowed per notebook. You can override
 
 ### Command Line Arguments
 
-`nb` is a lightweight tool that converts notebooks into Python scripts and executes them with the specified interpreter. It does not modify the code or create CLI interfaces. For handling command-line arguments, consider using a library like `fire` alongside `nb`.
+`nb` is a lightweight tool that converts notebooks into Python scripts and executes them with the specified interpreter. It does not modify the code or create CLI interfaces. For handling command-line arguments, consider using a library like [fire](https://github.com/google/python-fire) alongside `nb`.
 
 ### Imports
 
