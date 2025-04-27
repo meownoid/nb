@@ -15,7 +15,6 @@ import tomllib
 
 # Constants for regex patterns
 START_MARKER_RE = re.compile(r"^#\s*nb\.start(.*?)$")
-INTERPRETER_RE = re.compile(r"^#\s*ipython_path\s*=\s*\"(.+?)\".*$")
 END_MARKER_RE = re.compile(r"^#\s*nb\.end\s*$")
 
 
@@ -90,6 +89,59 @@ def set_interpreter_path(config: Config, name: str, path: str) -> None:
             json.dump(mapping, f)
 
 
+
+def parse_file(content: str) -> tuple[str, Dict[str, Any]]:
+    start_found, end_found = False, False
+    parsing_toml = False
+
+    script_lines = []
+    toml_lines = []
+
+    for line in content.split("\n"):
+        start_match = START_MARKER_RE.match(line)
+        end_match = END_MARKER_RE.match(line)
+
+        if start_found and not end_found:
+            if start_match:
+                raise ValueError("Nested start markers are not supported")
+            elif end_match:
+                end_found = True
+            elif parsing_toml:
+                if line.startswith("#"):
+                    # Collect TOML lines (remove leading # and space)
+                    toml_content = line[1:].strip()
+                    # Skip empty lines
+                    if toml_content:
+                        toml_lines.append(toml_content)
+                else:
+                    # If we encounter a non-comment, TOML section is over
+                    parsing_toml = False
+                    script_lines.append(line)
+            else:
+                script_lines.append(line)
+        elif start_found and end_found:
+            if start_match:
+                raise ValueError("Start marker found after end marker")
+            elif end_match:
+                raise ValueError("Nested end markers are not supported")
+        else:
+            if start_match:
+                start_found = True
+                # Start collecting TOML right after the start marker
+                parsing_toml = True
+            elif end_match:
+                raise ValueError("End marker found before start marker")
+
+    # If no markers found, use the entire notebook
+    if not start_found:
+        script_lines = content.split("\n")
+
+    config_data = tomllib.loads("\n".join(toml_lines)) if toml_lines else {}
+
+    return "\n".join(script_lines).strip(), config_data
+
+
+
 def transform_notebook(
     config: Config, name: str, notebook_path: str, script_path: str
 ) -> bool:
@@ -107,44 +159,13 @@ def transform_notebook(
         with open(temp_script_path, "r") as f:
             content = f.read()
 
-    start_found, end_found = False, False
-    custom_interpreter = None
-    script_lines = []
-
-    for line in content.split("\n"):
-        start_match = START_MARKER_RE.match(line)
-        end_match = END_MARKER_RE.match(line)
-        interpreter_match = INTERPRETER_RE.match(line)
-
-        if start_found and not end_found:
-            if start_match:
-                raise ValueError("Nested start markers are not supported")
-            elif end_match:
-                end_found = True
-            elif interpreter_match:
-                custom_interpreter = interpreter_match.group(1)
-            else:
-                script_lines.append(line)
-        elif start_found and end_found:
-            if start_match:
-                raise ValueError("Start marker found after end marker")
-            elif end_match:
-                raise ValueError("Nested end markers are not supported")
-        else:
-            if start_match:
-                start_found = True
-            elif end_match:
-                raise ValueError("End marker found before start marker")
-
-    # If no markers found, use the entire notebook
-    if not start_found:
-        script_lines = content.split("\n")
+    script_content, script_config = parse_file(content)
 
     with open(script_path, "w") as f:
-        f.write("\n".join(script_lines).strip())
+        f.write(script_content)
 
-    if custom_interpreter:
-        set_interpreter_path(config, name, custom_interpreter)
+    if "ipython_path" in script_config:
+        set_interpreter_path(config, name, script_config["ipython_path"])
 
     return True
 
