@@ -89,7 +89,6 @@ def set_interpreter_path(config: Config, name: str, path: str) -> None:
             json.dump(mapping, f)
 
 
-
 def parse_file(content: str) -> tuple[str, Dict[str, Any]]:
     start_found, end_found = False, False
     parsing_toml = False
@@ -139,7 +138,6 @@ def parse_file(content: str) -> tuple[str, Dict[str, Any]]:
     config_data = tomllib.loads("\n".join(toml_lines)) if toml_lines else {}
 
     return "\n".join(script_lines).strip(), config_data
-
 
 
 def transform_notebook(

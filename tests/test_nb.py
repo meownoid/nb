@@ -4,11 +4,10 @@ import shutil
 import sys
 import tempfile
 import unittest
-from contextlib import contextmanager
 from unittest import mock
 
 # Add parent directory to path so we can import nb
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import nb
 
@@ -18,7 +17,7 @@ class TestConfig(unittest.TestCase):
         config_dict = {
             "notebooks_path": "~/notebooks",
             "jupyter_path": "/usr/bin/jupyter",
-            "ipython_path": "/usr/bin/ipython"
+            "ipython_path": "/usr/bin/ipython",
         }
         config = nb.Config.from_dict(config_dict)
         self.assertEqual(config.notebooks_path, os.path.expanduser("~/notebooks"))
@@ -47,7 +46,9 @@ ipython_path = "/usr/local/bin/ipython"
 
         try:
             config = nb.load_config(temp_file.name)
-            self.assertEqual(config.notebooks_path, os.path.expanduser("~/test_notebooks"))
+            self.assertEqual(
+                config.notebooks_path, os.path.expanduser("~/test_notebooks")
+            )
             self.assertEqual(config.jupyter_path, "/usr/local/bin/jupyter")
             self.assertEqual(config.ipython_path, "/usr/local/bin/ipython")
         finally:
@@ -74,14 +75,14 @@ class TestLockFile(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
-    @mock.patch('fcntl.flock')
+    @mock.patch("fcntl.flock")
     def test_lock_file(self, mock_flock):
         with nb.lock_file(self.lock_path):
             mock_flock.assert_any_call(mock.ANY, nb.fcntl.LOCK_EX)
-            
+
         # Check if unlock was called
         mock_flock.assert_any_call(mock.ANY, nb.fcntl.LOCK_UN)
-        
+
         # Check if directory was created
         self.assertTrue(os.path.exists(os.path.dirname(self.lock_path)))
 
@@ -95,7 +96,7 @@ class TestInterpreterPaths(unittest.TestCase):
             ipython_path="/usr/bin/ipython",
             cache_path=os.path.join(self.temp_dir, "cache"),
             lock_file_path=os.path.join(self.temp_dir, "lock"),
-            interpreters_mapping_path=os.path.join(self.temp_dir, "interpreters.json")
+            interpreters_mapping_path=os.path.join(self.temp_dir, "interpreters.json"),
         )
 
     def tearDown(self):
@@ -108,7 +109,9 @@ class TestInterpreterPaths(unittest.TestCase):
 
     def test_get_interpreter_path_from_mapping(self):
         # Create mapping file
-        os.makedirs(os.path.dirname(self.config.interpreters_mapping_path), exist_ok=True)
+        os.makedirs(
+            os.path.dirname(self.config.interpreters_mapping_path), exist_ok=True
+        )
         mapping = {"test_notebook": "/custom/ipython"}
         with open(self.config.interpreters_mapping_path, "w") as f:
             json.dump(mapping, f)
@@ -118,10 +121,10 @@ class TestInterpreterPaths(unittest.TestCase):
 
     def test_set_interpreter_path_new(self):
         nb.set_interpreter_path(self.config, "test_notebook", "/new/ipython")
-        
+
         # Check if file was created
         self.assertTrue(os.path.exists(self.config.interpreters_mapping_path))
-        
+
         # Check content
         with open(self.config.interpreters_mapping_path, "r") as f:
             mapping = json.load(f)
@@ -129,13 +132,15 @@ class TestInterpreterPaths(unittest.TestCase):
 
     def test_set_interpreter_path_update(self):
         # Create initial mapping
-        os.makedirs(os.path.dirname(self.config.interpreters_mapping_path), exist_ok=True)
+        os.makedirs(
+            os.path.dirname(self.config.interpreters_mapping_path), exist_ok=True
+        )
         mapping = {"test_notebook": "/old/ipython", "other_notebook": "/other/ipython"}
         with open(self.config.interpreters_mapping_path, "w") as f:
             json.dump(mapping, f)
 
         nb.set_interpreter_path(self.config, "test_notebook", "/updated/ipython")
-        
+
         # Check content
         with open(self.config.interpreters_mapping_path, "r") as f:
             updated_mapping = json.load(f)
@@ -152,7 +157,7 @@ class TestTransformNotebook(unittest.TestCase):
             ipython_path="/usr/bin/ipython",
             cache_path=os.path.join(self.temp_dir, "cache"),
             lock_file_path=os.path.join(self.temp_dir, "lock"),
-            interpreters_mapping_path=os.path.join(self.temp_dir, "interpreters.json")
+            interpreters_mapping_path=os.path.join(self.temp_dir, "interpreters.json"),
         )
         os.makedirs(self.config.notebooks_path, exist_ok=True)
         os.makedirs(self.config.cache_path, exist_ok=True)
@@ -160,8 +165,8 @@ class TestTransformNotebook(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
-    @mock.patch('os.system')
-    @mock.patch('nb.set_interpreter_path')
+    @mock.patch("os.system")
+    @mock.patch("nb.set_interpreter_path")
     def test_transform_notebook_with_markers(self, mock_set_interpreter, mock_system):
         notebook_path = os.path.join(self.config.notebooks_path, "test_notebook.ipynb")
         script_path = os.path.join(self.config.cache_path, "test_notebook.py")
@@ -175,8 +180,8 @@ class TestTransformNotebook(unittest.TestCase):
 print("This will be ignored")
 
 # nb.start
-print("This is inside the markers")
 # ipython_path = "/custom/ipython"
+print("This is inside the markers")
 print("More code inside markers")
 # nb.end
 
@@ -186,11 +191,13 @@ print("This will be ignored too")
 
         mock_system.side_effect = fake_convert
 
-        result = nb.transform_notebook(self.config, "test_notebook", notebook_path, script_path)
-        
+        result = nb.transform_notebook(
+            self.config, "test_notebook", notebook_path, script_path
+        )
+
         self.assertTrue(result)
         self.assertTrue(os.path.exists(script_path))
-        
+
         # Check content of the output script
         with open(script_path, "r") as f:
             content = f.read()
@@ -198,11 +205,13 @@ print("This will be ignored too")
             self.assertIn("More code inside markers", content)
             self.assertNotIn("This will be ignored", content)
             self.assertNotIn("This will be ignored too", content)
-        
-        # Verify that set_interpreter_path was called
-        mock_set_interpreter.assert_called_once_with(self.config, "test_notebook", "/custom/ipython")
 
-    @mock.patch('os.system')
+        # Verify that set_interpreter_path was called
+        mock_set_interpreter.assert_called_once_with(
+            self.config, "test_notebook", "/custom/ipython"
+        )
+
+    @mock.patch("os.system")
     def test_transform_notebook_no_markers(self, mock_system):
         notebook_path = os.path.join(self.config.notebooks_path, "test_notebook.ipynb")
         script_path = os.path.join(self.config.cache_path, "test_notebook.py")
@@ -220,18 +229,20 @@ print("All code is included as there are no markers")
 
         mock_system.side_effect = fake_convert
 
-        result = nb.transform_notebook(self.config, "test_notebook", notebook_path, script_path)
-        
+        result = nb.transform_notebook(
+            self.config, "test_notebook", notebook_path, script_path
+        )
+
         self.assertTrue(result)
         self.assertTrue(os.path.exists(script_path))
-        
+
         # Check content of the output script
         with open(script_path, "r") as f:
             content = f.read()
             self.assertIn("This will be included", content)
             self.assertIn("All code is included as there are no markers", content)
 
-    @mock.patch('os.system')
+    @mock.patch("os.system")
     def test_transform_notebook_invalid_markers(self, mock_system):
         notebook_path = os.path.join(self.config.notebooks_path, "test_notebook.ipynb")
         script_path = os.path.join(self.config.cache_path, "test_notebook.py")
@@ -252,7 +263,9 @@ print("Nested start marker - should raise error")
         mock_system.side_effect = fake_convert
 
         with self.assertRaises(ValueError):
-            nb.transform_notebook(self.config, "test_notebook", notebook_path, script_path)
+            nb.transform_notebook(
+                self.config, "test_notebook", notebook_path, script_path
+            )
 
 
 class TestCachePythonFiles(unittest.TestCase):
@@ -269,14 +282,14 @@ class TestCachePythonFiles(unittest.TestCase):
             ipython_path="/usr/bin/ipython",
             cache_path=self.cache_path,
             lock_file_path=os.path.join(self.temp_dir, "lock"),
-            interpreters_mapping_path=os.path.join(self.temp_dir, "interpreters.json")
+            interpreters_mapping_path=os.path.join(self.temp_dir, "interpreters.json"),
         )
 
         # Create some test files
         self.py_file_path = os.path.join(self.notebooks_path, "test.py")
         self.ipynb_file_path = os.path.join(self.notebooks_path, "test.ipynb")
         self.txt_file_path = os.path.join(self.notebooks_path, "test.txt")
-        
+
         with open(self.py_file_path, "w") as f:
             f.write("print('hello')")
         with open(self.ipynb_file_path, "w") as f:
@@ -296,12 +309,14 @@ class TestCachePythonFiles(unittest.TestCase):
 
     def test_cache_python_files(self):
         nb.cache_python_files(self.config)
-        
+
         # Check that Python and notebook files were cached
         self.assertTrue(os.path.exists(os.path.join(self.cache_path, "test.py")))
         self.assertTrue(os.path.exists(os.path.join(self.cache_path, "test.ipynb")))
-        self.assertTrue(os.path.exists(os.path.join(self.cache_path, "subdir", "sub.py")))
-        
+        self.assertTrue(
+            os.path.exists(os.path.join(self.cache_path, "subdir", "sub.py"))
+        )
+
         # Text file should not be cached
         self.assertFalse(os.path.exists(os.path.join(self.cache_path, "test.txt")))
 
@@ -320,55 +335,64 @@ class TestBuildNotebook(unittest.TestCase):
             ipython_path="/usr/bin/ipython",
             cache_path=self.cache_path,
             lock_file_path=os.path.join(self.temp_dir, "lock"),
-            interpreters_mapping_path=os.path.join(self.temp_dir, "interpreters.json")
+            interpreters_mapping_path=os.path.join(self.temp_dir, "interpreters.json"),
         )
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
-    @mock.patch('nb.transform_notebook')
-    @mock.patch('nb.cache_python_files')
+    @mock.patch("nb.transform_notebook")
+    @mock.patch("nb.cache_python_files")
     def test_build_notebook_existing(self, mock_cache, mock_transform):
         # Create notebook file
         notebook_path = os.path.join(self.notebooks_path, "test.ipynb")
         with open(notebook_path, "w") as f:
             f.write("{}")  # Empty notebook
-        
+
         # Create cached script
         script_path = os.path.join(self.cache_path, "test.py")
         with open(script_path, "w") as f:
             f.write("print('cached')")
-        
+
         # Set up mock to indicate successful transform
         mock_transform.return_value = True
-        
+
         # Make notebook file newer than cached script
-        os.utime(notebook_path, (os.path.getmtime(script_path) + 10, os.path.getmtime(script_path) + 10))
-        
+        os.utime(
+            notebook_path,
+            (os.path.getmtime(script_path) + 10, os.path.getmtime(script_path) + 10),
+        )
+
         result_path = nb.build_notebook(self.config, "test")
-        
+
         self.assertEqual(result_path, script_path)
         mock_transform.assert_called_once()
         mock_cache.assert_called_once()
 
-    @mock.patch('nb.transform_notebook')
-    @mock.patch('nb.cache_python_files')
+    @mock.patch("nb.transform_notebook")
+    @mock.patch("nb.cache_python_files")
     def test_build_notebook_up_to_date(self, mock_cache, mock_transform):
         # Create notebook file
         notebook_path = os.path.join(self.notebooks_path, "test.ipynb")
         with open(notebook_path, "w") as f:
             f.write("{}")  # Empty notebook
-        
+
         # Create cached script
         script_path = os.path.join(self.cache_path, "test.py")
         with open(script_path, "w") as f:
             f.write("print('cached')")
-        
+
         # Make cached script newer than notebook file
-        os.utime(script_path, (os.path.getmtime(notebook_path) + 10, os.path.getmtime(notebook_path) + 10))
-        
+        os.utime(
+            script_path,
+            (
+                os.path.getmtime(notebook_path) + 10,
+                os.path.getmtime(notebook_path) + 10,
+            ),
+        )
+
         result_path = nb.build_notebook(self.config, "test")
-        
+
         self.assertEqual(result_path, script_path)
         mock_transform.assert_not_called()  # Should not transform if cache is up to date
         mock_cache.assert_called_once()
@@ -379,26 +403,25 @@ class TestBuildNotebook(unittest.TestCase):
 
 
 class TestRunNotebook(unittest.TestCase):
-    @mock.patch('os.execv')
-    @mock.patch('nb.build_notebook')
-    @mock.patch('nb.get_interpreter_path')
+    @mock.patch("os.execv")
+    @mock.patch("nb.build_notebook")
+    @mock.patch("nb.get_interpreter_path")
     def test_run_notebook(self, mock_get_interpreter, mock_build, mock_execv):
         # Setup mocks
         mock_build.return_value = "/path/to/script.py"
         mock_get_interpreter.return_value = "/path/to/ipython"
-        
+
         config = nb.Config(
             notebooks_path="/path/to/notebooks",
             jupyter_path="/path/to/jupyter",
             ipython_path="/path/to/ipython",
         )
-        
+
         nb.run_notebook(config, "test", ["arg1", "arg2"])
-        
+
         # Check that execv was called with correct arguments
         mock_execv.assert_called_once_with(
-            "/path/to/ipython",
-            ["ipython", "/path/to/script.py", "arg1", "arg2"]
+            "/path/to/ipython", ["ipython", "/path/to/script.py", "arg1", "arg2"]
         )
 
 
