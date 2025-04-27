@@ -17,7 +17,7 @@ To get started with `nb`, create a configuration file at `~/.nb/config.toml`:
 
 ```toml
 [default]
-notebooks_paths = "~/Documents/Notebooks"
+notebooks_path = "~/Documents/Notebooks"
 jupyter_path = "/opt/homebrew/Caskroom/miniforge/base/bin/jupyter"
 ipython_path = "/opt/homebrew/Caskroom/miniforge/base/bin/ipython"
 ```

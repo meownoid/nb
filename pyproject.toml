@@ -12,7 +12,7 @@ dev = [
 ]
 
 [project.scripts]
-nb = "main:main"
+nb = "nb:main"
 
 [tool.mypy]
 plugins = "numpy.typing.mypy_plugin"
