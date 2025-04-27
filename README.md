@@ -63,4 +63,6 @@ Data is not cached. If you are reading files from the notebooks folder, use abso
 
 ## How It Works
 
-When you run a notebook, `nb` checks if it has already been converted to a script and whether it has changed since the last execution. If it is the first run or the notebook has been modified, `nb` converts it into a script using the configured Jupyter executable. Converted notebooks are stored in a cache. Additionally, all `.ipynb` and `.py` files in the notebooks folder are cached to support imports and `%run` magic commands.
+When you run a notebook, `nb` checks if it has already been converted to a script and whether it has changed since the last execution. If it is the first run or the notebook has been modified, `nb` converts it into a script using the configured Jupyter executable. Converted notebooks are stored in a cache. Additionally, all `.py` files in the notebooks folder are cached to support local imports.
+
+To optimize performance, additional files are cached only when the notebook is modified. This means that updates to imported files will not be reflected unless the notebook itself is also changed.

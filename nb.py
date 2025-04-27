@@ -173,17 +173,21 @@ def transform_notebook(
     return True
 
 
-def cache_python_files(config: Config) -> None:
-    """Cache only modified Python files in notebooks folder"""
-    for root, _, files in os.walk(config.notebooks_path):
+def sync_python_files(from_path: str, to_path: str) -> None:
+    """Cache only modified Python files in notebooks folder and remove outdated cached files"""
+    source_files = set()
+
+    os.makedirs(to_path, exist_ok=True)
+
+    for root, _, files in os.walk(from_path):
         for file in files:
-            if not file.endswith((".py", ".ipynb")):
+            if not file.endswith(".py"):
                 continue
 
             src_path = os.path.join(root, file)
-            dest_path = os.path.join(
-                config.cache_path, os.path.relpath(src_path, config.notebooks_path)
-            )
+            dest_path = os.path.join(to_path, os.path.relpath(src_path, from_path))
+
+            source_files.add(dest_path)
 
             # Check if the destination file exists and is up-to-date
             if os.path.exists(dest_path):
@@ -195,12 +199,20 @@ def cache_python_files(config: Config) -> None:
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             shutil.copy2(src_path, dest_path)
 
+    # Remove cached files that are no longer in the source folder
+    for root, _, files in os.walk(to_path):
+        for file in files:
+            cached_path = os.path.join(root, file)
+            if cached_path not in source_files:
+                os.remove(cached_path)
+
 
 def build_notebook(config: Config, name: str) -> str:
     """Build notebook script and cache it"""
-    name_hashed = hashlib.md5(name.encode()).hexdigest()
     notebook_path = os.path.join(config.notebooks_path, f"{name}.ipynb")
-    script_path = os.path.join(config.cache_path, f"{name_hashed}.py")
+    notebook_hash = hashlib.md5(notebook_path.encode()).hexdigest()
+    script_dir = os.path.join(config.cache_path, notebook_hash)
+    script_path = os.path.join(script_dir, f"{name}.py")
 
     if not os.path.exists(notebook_path):
         print(f"Notebook not found: {notebook_path}")
@@ -209,13 +221,14 @@ def build_notebook(config: Config, name: str) -> str:
     notebook_mtime = os.path.getmtime(notebook_path)
     script_mtime = os.path.getmtime(script_path) if os.path.exists(script_path) else 0
 
+    # If notebook is newer than script, or script doesn't exist
     if notebook_mtime > script_mtime:
+        # Sync Python files from notebooks folder to cache
+        sync_python_files(config.notebooks_path, script_dir)
+        # Transform notebook to script
         if not transform_notebook(config, name, notebook_path, script_path):
             print(f"Error transforming notebook: {notebook_path}")
             sys.exit(3)
-
-        # Cache other Python files
-        cache_python_files(config)
 
     return script_path
 

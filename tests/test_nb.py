@@ -445,11 +445,13 @@ class TestCachePythonFiles(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     def test_cache_python_files(self):
-        nb.cache_python_files(self.config)
+        # Call sync_python_files with from_path and to_path arguments
+        nb.sync_python_files(self.notebooks_path, self.cache_path)
 
-        # Check that Python and notebook files were cached
+        # Check that Python files were cached
         self.assertTrue(os.path.exists(os.path.join(self.cache_path, "test.py")))
-        self.assertTrue(os.path.exists(os.path.join(self.cache_path, "test.ipynb")))
+        # Notebooks (.ipynb files) should not be copied by sync_python_files
+        self.assertFalse(os.path.exists(os.path.join(self.cache_path, "test.ipynb")))
         self.assertTrue(
             os.path.exists(os.path.join(self.cache_path, "subdir", "sub.py"))
         )
@@ -479,15 +481,18 @@ class TestBuildNotebook(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     @mock.patch("nb.transform_notebook")
-    @mock.patch("nb.cache_python_files")
-    def test_build_notebook_existing(self, mock_cache, mock_transform):
+    @mock.patch("nb.sync_python_files")
+    def test_build_notebook_existing(self, mock_sync, mock_transform):
         # Create notebook file
         notebook_path = os.path.join(self.notebooks_path, "test.ipynb")
         with open(notebook_path, "w") as f:
             f.write("{}")  # Empty notebook
 
         # Create cached script
-        script_path = os.path.join(self.cache_path, "test.py")
+        notebook_hash = nb.hashlib.md5(notebook_path.encode()).hexdigest()
+        script_dir = os.path.join(self.cache_path, notebook_hash)
+        os.makedirs(script_dir, exist_ok=True)
+        script_path = os.path.join(script_dir, "test.py")
         with open(script_path, "w") as f:
             f.write("print('cached')")
 
@@ -504,18 +509,21 @@ class TestBuildNotebook(unittest.TestCase):
 
         self.assertEqual(result_path, script_path)
         mock_transform.assert_called_once()
-        mock_cache.assert_called_once()
+        mock_sync.assert_called_once_with(self.config.notebooks_path, script_dir)
 
     @mock.patch("nb.transform_notebook")
-    @mock.patch("nb.cache_python_files")
-    def test_build_notebook_up_to_date(self, mock_cache, mock_transform):
+    @mock.patch("nb.sync_python_files")
+    def test_build_notebook_up_to_date(self, mock_sync, mock_transform):
         # Create notebook file
         notebook_path = os.path.join(self.notebooks_path, "test.ipynb")
         with open(notebook_path, "w") as f:
             f.write("{}")  # Empty notebook
 
         # Create cached script
-        script_path = os.path.join(self.cache_path, "test.py")
+        notebook_hash = nb.hashlib.md5(notebook_path.encode()).hexdigest()
+        script_dir = os.path.join(self.cache_path, notebook_hash)
+        os.makedirs(script_dir, exist_ok=True)
+        script_path = os.path.join(script_dir, "test.py")
         with open(script_path, "w") as f:
             f.write("print('cached')")
 
@@ -533,7 +541,7 @@ class TestBuildNotebook(unittest.TestCase):
         self.assertEqual(result_path, script_path)
         # Should not transform if cache is up to date
         mock_transform.assert_not_called()
-        mock_cache.assert_not_called()
+        mock_sync.assert_not_called()
 
     def test_build_notebook_not_found(self):
         with self.assertRaises(SystemExit):
