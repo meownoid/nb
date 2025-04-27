@@ -268,6 +268,143 @@ print("Nested start marker - should raise error")
             )
 
 
+class TestParseFile(unittest.TestCase):
+    """Tests for the parse_file function that extracts script content and config from notebook content."""
+
+    def test_parse_file_with_markers_and_toml(self):
+        """Test parsing a file with nb.start/nb.end markers and TOML config."""
+        content = """
+# Initial comment
+print("This will be ignored")
+
+# nb.start
+# ipython_path = "/custom/ipython"
+# another_config = "value"
+print("This is inside the markers")
+print("More code inside markers")
+# nb.end
+
+print("This will be ignored too")
+"""
+        script, config = nb.parse_file(content)
+
+        # Check script content
+        self.assertIn("This is inside the markers", script)
+        self.assertIn("More code inside markers", script)
+        self.assertNotIn("This will be ignored", script)
+        self.assertNotIn("This will be ignored too", script)
+
+        # Check config data
+        self.assertEqual(config["ipython_path"], "/custom/ipython")
+        self.assertEqual(config["another_config"], "value")
+
+    def test_parse_file_with_markers_no_toml(self):
+        """Test parsing a file with nb.start/nb.end markers but no TOML config."""
+        content = """
+# nb.start
+print("Only code, no TOML config")
+# nb.end
+"""
+        script, config = nb.parse_file(content)
+
+        self.assertEqual(script, 'print("Only code, no TOML config")')
+        self.assertEqual(config, {})
+
+    def test_parse_file_no_markers(self):
+        """Test parsing a file without any nb.start/nb.end markers."""
+        content = """
+# Regular Python code
+print("This should be included")
+def test():
+    return 42
+"""
+        script, config = nb.parse_file(content)
+
+        self.assertIn("Regular Python code", script)
+        self.assertIn('print("This should be included")', script)
+        self.assertIn("def test():", script)
+        self.assertEqual(config, {})
+
+    def test_parse_file_with_empty_toml(self):
+        """Test parsing with markers but empty TOML section."""
+        content = """
+# nb.start
+
+print("Code after empty line")
+# nb.end
+"""
+        script, config = nb.parse_file(content)
+
+        self.assertEqual(script, 'print("Code after empty line")')
+        self.assertEqual(config, {})
+
+    def test_parse_file_with_nested_markers_error(self):
+        """Test that nested start markers raise a ValueError."""
+        content = """
+# nb.start
+print("First block")
+# nb.start
+print("Nested block")
+# nb.end
+"""
+        with self.assertRaises(ValueError):
+            nb.parse_file(content)
+
+    def test_parse_file_with_end_before_start_error(self):
+        """Test that end marker before start marker raises a ValueError."""
+        content = """
+print("Some code")
+# nb.end
+print("More code")
+# nb.start
+print("Too late")
+"""
+        with self.assertRaises(ValueError):
+            nb.parse_file(content)
+
+    def test_parse_file_with_multiple_end_markers_error(self):
+        """Test that multiple end markers raise a ValueError."""
+        content = """
+# nb.start
+print("In block")
+# nb.end
+print("Between blocks")
+# nb.end
+"""
+        with self.assertRaises(ValueError):
+            nb.parse_file(content)
+
+    def test_parse_file_with_invalid_toml(self):
+        """Test parsing with invalid TOML configuration."""
+        content = """
+# nb.start
+# this is not valid TOML
+# key = unclosed string value"
+print("Code after invalid TOML")
+# nb.end
+"""
+        with self.assertRaises(Exception):
+            nb.parse_file(content)
+
+    def test_parse_file_toml_and_code_mixed(self):
+        """Test parsing when TOML and code are mixed."""
+        content = """
+# nb.start
+# key1 = "value1"
+print("Code interrupts TOML")
+# key2 = "value2"
+print("More code")
+# nb.end
+"""
+        script, config = nb.parse_file(content)
+
+        # Only the first TOML block should be parsed
+        self.assertEqual(config, {"key1": "value1"})
+        self.assertIn('print("Code interrupts TOML")', script)
+        self.assertIn('# key2 = "value2"', script)
+        self.assertIn('print("More code")', script)
+
+
 class TestCachePythonFiles(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()

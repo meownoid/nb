@@ -135,7 +135,12 @@ def parse_file(content: str) -> tuple[str, Dict[str, Any]]:
     if not start_found:
         script_lines = content.split("\n")
 
-    config_data = tomllib.loads("\n".join(toml_lines)) if toml_lines else {}
+    try:
+        config_data = tomllib.loads("\n".join(toml_lines)) if toml_lines else {}
+    except tomllib.TOMLDecodeError:
+        raise ValueError(
+            "Invalid TOML config after start marker, make sure to add empty line after start marker and config lines"
+        )
 
     return "\n".join(script_lines).strip(), config_data
 
