@@ -174,7 +174,7 @@ def transform_notebook(
 
 
 def cache_python_files(config: Config) -> None:
-    """Cache all Python files in notebooks folder"""
+    """Cache only modified Python files in notebooks folder"""
     for root, _, files in os.walk(config.notebooks_path):
         for file in files:
             if not file.endswith((".py", ".ipynb")):
@@ -184,6 +184,13 @@ def cache_python_files(config: Config) -> None:
             dest_path = os.path.join(
                 config.cache_path, os.path.relpath(src_path, config.notebooks_path)
             )
+
+            # Check if the destination file exists and is up-to-date
+            if os.path.exists(dest_path):
+                src_mtime = os.path.getmtime(src_path)
+                dest_mtime = os.path.getmtime(dest_path)
+                if src_mtime <= dest_mtime:
+                    continue
 
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             shutil.copy2(src_path, dest_path)
