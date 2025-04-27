@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -9,7 +10,7 @@ import sys
 import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 import tomllib
 
@@ -28,7 +29,7 @@ class Config:
     interpreters_mapping_path: str = os.path.expanduser("~/.nb/interpreters.json")
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "Config":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "Config":
         # Check if required paths are provided
         for key in ["notebooks_path", "jupyter_path", "ipython_path"]:
             if key not in config_dict:
@@ -88,7 +89,7 @@ def set_interpreter_path(config: Config, name: str, path: str) -> None:
             json.dump(mapping, f)
 
 
-def parse_file(content: str) -> tuple[str, Dict[str, Any]]:
+def parse_file(content: str) -> tuple[str, dict[str, Any]]:
     start_found, end_found = False, False
     parsing_toml = False
 
@@ -197,8 +198,9 @@ def cache_python_files(config: Config) -> None:
 
 def build_notebook(config: Config, name: str) -> str:
     """Build notebook script and cache it"""
+    name_hashed = hashlib.md5(name.encode()).hexdigest()
     notebook_path = os.path.join(config.notebooks_path, f"{name}.ipynb")
-    script_path = os.path.join(config.cache_path, f"{name}.py")
+    script_path = os.path.join(config.cache_path, f"{name_hashed}.py")
 
     if not os.path.exists(notebook_path):
         print(f"Notebook not found: {notebook_path}")
@@ -212,8 +214,8 @@ def build_notebook(config: Config, name: str) -> str:
             print(f"Error transforming notebook: {notebook_path}")
             sys.exit(3)
 
-    # Cache other Python files
-    cache_python_files(config)
+        # Cache other Python files
+        cache_python_files(config)
 
     return script_path
 

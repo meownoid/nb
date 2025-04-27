@@ -531,8 +531,9 @@ class TestBuildNotebook(unittest.TestCase):
         result_path = nb.build_notebook(self.config, "test")
 
         self.assertEqual(result_path, script_path)
-        mock_transform.assert_not_called()  # Should not transform if cache is up to date
-        mock_cache.assert_called_once()
+        # Should not transform if cache is up to date
+        mock_transform.assert_not_called()
+        mock_cache.assert_not_called()
 
     def test_build_notebook_not_found(self):
         with self.assertRaises(SystemExit):
