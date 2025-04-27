@@ -25,9 +25,9 @@ class Config:
     jupyter_path: str
     ipython_path: str
 
-    CACHE_PATH: str = os.path.expanduser("~/.nb/cache/")
-    LOCK_FILE_PATH: str = os.path.expanduser("~/.nb/lock")
-    INTERPRETERS_MAPPING_PATH: str = os.path.expanduser("~/.nb/interpreters.json")
+    cache_path: str = os.path.expanduser("~/.nb/cache/")
+    lock_file_path: str = os.path.expanduser("~/.nb/lock")
+    interpreters_mapping_path: str = os.path.expanduser("~/.nb/interpreters.json")
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "Config":
@@ -67,26 +67,26 @@ def lock_file(path: str):
 
 def get_interpreter_path(config: Config, name: str) -> str:
     """Get interpreter path for notebook, with fallback to config"""
-    with lock_file(config.LOCK_FILE_PATH):
-        if not os.path.exists(config.INTERPRETERS_MAPPING_PATH):
+    with lock_file(config.lock_file_path):
+        if not os.path.exists(config.interpreters_mapping_path):
             return config.ipython_path
 
-        with open(config.INTERPRETERS_MAPPING_PATH, "r") as f:
+        with open(config.interpreters_mapping_path, "r") as f:
             return json.load(f).get(name, config.ipython_path)
 
 
 def set_interpreter_path(config: Config, name: str, path: str) -> None:
     """Set interpreter path for notebook"""
-    with lock_file(config.LOCK_FILE_PATH):
+    with lock_file(config.lock_file_path):
         mapping = {}
 
-        if os.path.exists(config.INTERPRETERS_MAPPING_PATH):
-            with open(config.INTERPRETERS_MAPPING_PATH, "r") as f:
+        if os.path.exists(config.interpreters_mapping_path):
+            with open(config.interpreters_mapping_path, "r") as f:
                 mapping = json.load(f)
 
         mapping[name] = path
 
-        with open(config.INTERPRETERS_MAPPING_PATH, "w") as f:
+        with open(config.interpreters_mapping_path, "w") as f:
             json.dump(mapping, f)
 
 
@@ -158,7 +158,7 @@ def cache_python_files(config: Config) -> None:
 
             src_path = os.path.join(root, file)
             dest_path = os.path.join(
-                config.CACHE_PATH, os.path.relpath(src_path, config.notebooks_path)
+                config.cache_path, os.path.relpath(src_path, config.notebooks_path)
             )
 
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
@@ -168,7 +168,7 @@ def cache_python_files(config: Config) -> None:
 def build_notebook(config: Config, name: str) -> str:
     """Build notebook script and cache it"""
     notebook_path = os.path.join(config.notebooks_path, f"{name}.ipynb")
-    script_path = os.path.join(config.CACHE_PATH, f"{name}.py")
+    script_path = os.path.join(config.cache_path, f"{name}.py")
 
     if not os.path.exists(notebook_path):
         print(f"Notebook not found: {notebook_path}")
@@ -226,7 +226,7 @@ def main():
     config = load_config(config_path)
 
     # Ensure cache directory exists
-    os.makedirs(config.CACHE_PATH, exist_ok=True)
+    os.makedirs(config.cache_path, exist_ok=True)
 
     # Run notebook
     name = sys.argv[1]
