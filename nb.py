@@ -243,6 +243,7 @@ def main():
     config_path = os.path.expanduser("~/.nb/config.toml")
 
     if not os.path.exists(config_path):
+        print(f"Configuration file not found: {config_path}")
         show_example_config()
         sys.exit(1)
 
